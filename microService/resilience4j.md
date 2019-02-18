@@ -18,3 +18,18 @@
    区别于Hystrix中基于时间窗口的统计，resilience4j使用一个环形的BitSet来进行统计，永远统计最近XX个调用的状态。这样的好处是对于不同访问量的接口都可以提供一个统一的配置视图，因为统计数据不再以时间维度来滚动。另外相比Hystrix中使用布尔数组的方式，BitSet更节省内存。
    
 #### RingBitSet
+   一个环形的BitSet，环形意味着只统计最近size次的调用情况。当某次调用失败的时候，对应bit位的值设置为1，成功则将对应bit位的值设置为0。BitSet中维护有一个long类型的数组来维护bit位。通过将bitIndex右移6位(除64)来获取该bit位对应的long对象在数组中的位置。1L << bitIndex之后在64bit的bit序列中，bitIndex位置的值位1其余位置为0，
+   所以如果要设置的值为1，则将该位置对应的long值与bitMask按位或，如果需要设置的值位0，则对bitMask取反再与对应的long值按位与。
+   ```
+   int set(int bitIndex, boolean value) {
+           int wordIndex = wordIndex(bitIndex);
+           long bitMask = 1L << bitIndex;
+           int previous = (words[wordIndex] & bitMask) != 0 ? 1 : 0;
+           if (value) {
+               words[wordIndex] |= bitMask;
+           } else {
+               words[wordIndex] &= ~bitMask;
+           }
+           return previous;
+       }
+   ```
